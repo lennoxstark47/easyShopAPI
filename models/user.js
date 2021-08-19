@@ -1,13 +1,12 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 
-const userSchema = new Schema({
+const userSchema = mongoose.Schema({
 	name: String,
 	image: String,
-	// countInStock: {
-	// 	type: Number,
-	// 	required: true,
-	// },
+	countInStock: {
+		type: Number,
+		required: true,
+	},
 });
 
 const User = mongoose.model('User', userSchema);
