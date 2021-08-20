@@ -1,8 +1,8 @@
 const Order = require('../models/order');
 const express = require('express');
-const router = express.Router();
+const Router = express.Router();
 
-router.get(`/`, async (req, res) => {
+Router.get(`/`, async (req, res) => {
 	const orderList = await Order.find();
 
 	if (!orderList) {
@@ -11,4 +11,4 @@ router.get(`/`, async (req, res) => {
 	res.send(orderList);
 });
 
-module.exports = router;
+module.exports = Router;
