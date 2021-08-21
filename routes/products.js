@@ -2,12 +2,13 @@ const express = require('express');
 const Router = express.Router();
 const Product = require('../models/product');
 const Category = require('../models/category');
+const mongoose = require('mongoose');
 
-const api = process.env.API_URL;
+// const api = process.env.API_URL;
 
 Router.get('/', async (req, res) => {
 	const productList = await Product.find()
-		.select('name image -_id')
+		.select('name image')
 		.populate('category');
 	if (!productList) {
 		res.status(500).json({ success: false });
@@ -20,7 +21,9 @@ Router.get('/:id', async (req, res) => {
 		req.params.id
 	).populate('category');
 	if (!productList) {
-		return res.status(500).json({ success: false });
+		return res
+			.status(500)
+			.json({ success: false });
 	}
 	res.send(productList);
 });
@@ -80,9 +83,16 @@ Router.post('/', (req, res) => {
 });
 
 Router.put('/:id', async (req, res) => {
+	if (!mongoose.isValidObjectId(req.params.id)) {
+		return res
+			.status(400)
+			.json('wrong product id');
+	}
 	const findCategory = await Category.find();
 	if (!findCategory) {
-		return res.status(400).send('Invalid Category');
+		return res
+			.status(400)
+			.send('Invalid Category');
 	}
 
 	const {
@@ -130,6 +140,41 @@ Router.put('/:id', async (req, res) => {
 			.send('Product cannot be created');
 	}
 	res.status(200).send(updatedProduct);
+});
+Router.delete('/:id', (req, res) => {
+	Product.findByIdAndRemove(req.params.id, {
+		useFindAndModify: false,
+	})
+		.then((result) => {
+			if (!result) {
+				return res.status(400).json({
+					success: false,
+					message: 'cannot delete item',
+				});
+			}
+			res.status(200).json({
+				success: true,
+				message: 'deleted item suucessfully',
+			});
+		})
+		.catch((err) => {
+			res.status(500).json({ error: err });
+		});
+});
+
+Router.get('/count', (req, res) => {
+	Product.countDocuments()
+		.then((count) => {
+			if (!count) {
+				return res
+					.status(500)
+					.json({ success: false });
+			}
+			res.json({ ProductCount: count });
+		})
+		.catch((err) => {
+			res.status(500).json({ error: err });
+		});
 });
 
 module.exports = Router;
