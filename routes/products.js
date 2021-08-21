@@ -3,12 +3,13 @@ const Router = express.Router();
 const Product = require('../models/product');
 const Category = require('../models/category');
 const mongoose = require('mongoose');
+const { count } = require('../models/product');
 
 // const api = process.env.API_URL;
 
 Router.get('/', async (req, res) => {
 	const productList = await Product.find()
-		.select('name image')
+		.select('name image isFeatured')
 		.populate('category');
 	if (!productList) {
 		res.status(500).json({ success: false });
@@ -21,9 +22,7 @@ Router.get('/:id', async (req, res) => {
 		req.params.id
 	).populate('category');
 	if (!productList) {
-		return res
-			.status(500)
-			.json({ success: false });
+		return res.status(500).json({ success: false });
 	}
 	res.send(productList);
 });
@@ -84,15 +83,11 @@ Router.post('/', (req, res) => {
 
 Router.put('/:id', async (req, res) => {
 	if (!mongoose.isValidObjectId(req.params.id)) {
-		return res
-			.status(400)
-			.json('wrong product id');
+		return res.status(400).json('wrong product id');
 	}
 	const findCategory = await Category.find();
 	if (!findCategory) {
-		return res
-			.status(400)
-			.send('Invalid Category');
+		return res.status(400).send('Invalid Category');
 	}
 
 	const {
@@ -162,19 +157,49 @@ Router.delete('/:id', (req, res) => {
 		});
 });
 
-Router.get('/count', (req, res) => {
-	Product.countDocuments()
-		.then((count) => {
-			if (!count) {
-				return res
-					.status(500)
-					.json({ success: false });
+Router.get('/get/count', async (req, res) => {
+	const productCount =
+		await Product.countDocuments((count) => count);
+	if (!productCount) {
+		return res.status(500).json({ success: false });
+	}
+	res.json({ productCount: productCount });
+});
+
+Router.get('/get/featured/:count', (req, res) => {
+	const count = req.params.count
+		? req.params.count
+		: 0;
+	Product.find({ isFeatured: true })
+		.limit(+count)
+
+		.then((products) => {
+			if (!products) {
+				res.status(400).json({ success: false });
 			}
-			res.json({ ProductCount: count });
+			res.send(products);
 		})
 		.catch((err) => {
 			res.status(500).json({ error: err });
 		});
+});
+
+Router.get('/', async (req, res) => {
+	let filter = {};
+	if (req.query.categories) {
+		filter = {
+			category: req.query.catagories.split(','),
+		};
+	}
+
+	const filteredProducts = await Product.find(
+		filter
+	).populate('category');
+
+	if (!filteredProducts) {
+		return res.status(400).json({ success: false });
+	}
+	res.send(filteredProducts);
 });
 
 module.exports = Router;
