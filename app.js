@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
+const authJwt = require('./helper/jwt');
 require('dotenv').config();
 
 //middlewares
@@ -12,6 +13,7 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(cors());
 app.options('*', cors);
+app.use(authJwt());
 
 //variable declaration
 const port = process.env.PORT || 5000;
