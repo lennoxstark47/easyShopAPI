@@ -21,7 +21,9 @@ Router.get(`/`, async (req, res) => {
 });
 
 Router.get(`/:id`, async (req, res) => {
-	const order = await Order.findById(req.params.id)
+	const order = await Order.findById(
+		req.params.id
+	)
 		.populate('user', 'name')
 		.populate({
 			path: 'orderItems',
@@ -32,57 +34,69 @@ Router.get(`/:id`, async (req, res) => {
 		});
 
 	if (!order) {
-		return res.status(500).json({ success: false });
+		return res
+			.status(500)
+			.json({ success: false });
 	}
 	res.send(order);
 });
 
-Router.post('/', (req, res) => {
-	const orderItemsIds = req.body.orderItems.map(
-		(item) => {
+Router.post('/', async (req, res) => {
+	const orderItemsIds = Promise.all(
+		req.body.orderItems.map(async (orderItem) => {
 			let newOrderItem = new OrderItem({
-				quantity: item.quantity,
-				product: item.product,
+				quantity: orderItem.quantity,
+				product: orderItem.product,
 			});
-			newOrderItem.save();
+
+			newOrderItem = await newOrderItem.save();
+
 			return newOrderItem._id;
-		}
+		})
+	);
+	const orderItemsIdsResolved =
+		await orderItemsIds;
+
+	const totalPrices = await Promise.all(
+		orderItemsIdsResolved.map(
+			async (orderItemId) => {
+				const orderItem =
+					await OrderItem.findById(
+						orderItemId
+					).populate('product', 'price');
+				const totalPrice =
+					orderItem.product.price *
+					orderItem.quantity;
+				return totalPrice;
+			}
+		)
 	);
 
-	const {
-		shippingAddress1,
-		shippingAddress2,
-		city,
-		zip,
-		country,
-		phone,
-		status,
-		totalPrice,
-		user,
-		dateOrdered,
-	} = req.body;
-	const newOrder = new Order({
-		orderItems: orderItemsIds,
-		shippingAddress1,
-		shippingAddress2,
-		city,
-		zip,
-		country,
-		phone,
-		status,
-		totalPrice,
-		user,
-		dateOrdered,
+	const totalPrice = totalPrices.reduce(
+		(a, b) => a + b,
+		0
+	);
+
+	let order = new Order({
+		orderItems: orderItemsIdsResolved,
+		shippingAddress1: req.body.shippingAddress1,
+		shippingAddress2: req.body.shippingAddress2,
+		city: req.body.city,
+		zip: req.body.zip,
+		country: req.body.country,
+		phone: req.body.phone,
+		status: req.body.status,
+		totalPrice: totalPrice,
+		user: req.body.user,
 	});
-	newOrder.save().then((order) => {
-		if (!order) {
-			res.status(400).json({
-				success: false,
-				message: 'Error creating an order',
-			});
-		}
-		res.status(200).send(order);
-	});
+	order = await order.save();
+
+	if (!order)
+		return res
+			.status(400)
+			.send('the order cannot be created!');
+
+	res.send(order);
 });
 
 Router.put('/:id', (req, res) => {
@@ -108,13 +122,18 @@ Router.put('/:id', (req, res) => {
 });
 
 Router.delete('/:id', (req, res) => {
-	Order.findByIdAndRemove(req.params.id)
+	Order.findByIdAndRemove(req.params.id, {
+		useFindAndModify: false,
+	})
 		.then(async (order) => {
 			if (order) {
 				await order.orderItems.map(
 					async (orderItem) => {
 						await OrderItem.findByIdAndRemove(
-							orderItem
+							orderItem,
+							{
+								useFindAndModify: false,
+							}
 						);
 					}
 				);
@@ -123,7 +142,9 @@ Router.delete('/:id', (req, res) => {
 					message: `${order._id} is deleted successfully!`,
 				});
 			} else {
-				res.status(400).send('Order cant be deleted');
+				res
+					.status(400)
+					.send('Order cant be deleted');
 			}
 		})
 		.catch((err) => {

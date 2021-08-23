@@ -80,7 +80,9 @@ Router.post('/login', (req, res) => {
 	User.findOne({ email: req.body.email })
 		.then((user) => {
 			if (!user) {
-				return res.status(400).send('User not found');
+				return res
+					.status(400)
+					.send('User not found');
 			}
 			if (
 				user &&
@@ -90,13 +92,19 @@ Router.post('/login', (req, res) => {
 				)
 			) {
 				const token = jwt.sign(
-					{ userId: user.id, isAdmin: user.isAdmin },
+					{
+						userId: user.id,
+						isAdmin: user.isAdmin,
+					},
 					secret,
 					{ expiresIn: '1h' }
 				);
 				return res
 					.status(200)
-					.send({ user: user.email, token: token });
+					.send({
+						user: user.email,
+						token: token,
+					});
 			}
 			res.status(400).send('Password is wrong');
 		})
@@ -150,7 +158,9 @@ Router.delete('/:id', (req, res) => {
 	User.findByIdAndRemove(req.params.id).then(
 		(user) => {
 			if (!user) {
-				return res.status(400).send('User not found');
+				return res
+					.status(400)
+					.send('User not found');
 			}
 			res
 				.status(200)
